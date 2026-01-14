@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+.temp/
+.cache/
+.tmp-build/
+
+# LanguageTool assets (downloaded during build)
+# These are large files (~230MB) downloaded by scripts/build-assets.sh
+resources/runtime/
+resources/languagetool/
+
+# Rust build artifacts
+src-tauri/target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Logs
+*.log
+npm-debug.log*
+
+# Environment
+.env*

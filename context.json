@@ -1,0 +1,93 @@
+{
+  "name": "azeTextCorrector",
+  "version": "2.0.0",
+  "description": "Application native macOS de correction orthographique et grammaticale française - Version embarquée offline",
+  "tech_stack": {
+    "app": "Tauri 2.9 (Rust)",
+    "frontend": "HTML/CSS/JavaScript vanilla",
+    "correction_engine": "LanguageTool 6.6 embarqué (JRE minimal + lazy loading)",
+    "dependencies": {
+      "tauri": "2.9",
+      "tauri-plugin-log": "2",
+      "tauri-plugin-shell": "2",
+      "thiserror": "2.0",
+      "reqwest": "0.12",
+      "jdk": "temurin-17 LTS"
+    }
+  },
+  "features": [
+    "Interface terminal/dev minimaliste",
+    "Deux panneaux : texte original / texte corrigé",
+    "Corrections interactives (hover, context menu, ignore/revert)",
+    "Raccourcis clavier : ⌘↵ corriger, ⌘⇧C copier, ⌘D dictionnaire",
+    "Correction orthographique et grammaticale française",
+    "App native macOS (~235 MB avec LanguageTool embarqué)",
+    "100% hors-ligne, aucune dépendance externe",
+    "Lazy loading : LT démarre à la première correction",
+    "Dictionnaire personnalisé (mots à ignorer)",
+    "RAM légère au repos (~20-30 MB)",
+    "Logging debug avec tauri-plugin-log"
+  ],
+  "architecture": {
+    "web/index.html": "Interface utilisateur",
+    "web/style.css": "Design system dark mode",
+    "web/script.js": "Classe Editor principale",
+    "web/corrections.js": "Gestion des corrections interactives",
+    "web/states.js": "États et feedback (loading, toasts)",
+    "web/logger.js": "Logging frontend",
+    "web/dictionary.js": "Gestion dictionnaire personnalisé",
+    "src-tauri/": "App native Tauri (Rust)",
+    "src-tauri/src/lib.rs": "Point d'entrée, setup logging",
+    "src-tauri/src/error.rs": "Types d'erreur AppError",
+    "src-tauri/src/languagetool/": "Module gestion LanguageTool (lazy loading)",
+    "src-tauri/src/dictionary/": "Module dictionnaire personnalisé",
+    "src-tauri/src/commands.rs": "Commandes Tauri",
+    "resources/runtime/": "JRE minimal (jlink ~50 MB)",
+    "resources/languagetool/": "LanguageTool server + ressources FR (~180 MB)"
+  },
+  "build": {
+    "app": "src-tauri/target/release/bundle/macos/azeTextCorrector.app",
+    "dmg": "src-tauri/target/release/bundle/dmg/azeTextCorrector_2.0.0_aarch64.dmg"
+  },
+  "usage": {
+    "dev": "npx tauri dev",
+    "build": "npm run build:macos",
+    "build_assets": "npm run build:assets",
+    "debug": "AZETEXTCORRECTOR_DEBUG=1 ./azeTextCorrector.app/Contents/MacOS/azeTextCorrector"
+  },
+  "api": {
+    "internal": true,
+    "endpoint": "http://localhost:8081/v2/check",
+    "method": "POST",
+    "params": {
+      "text": "texte à corriger",
+      "language": "fr"
+    }
+  },
+  "ram": {
+    "idle": "20-30 MB",
+    "active": "200-250 MB",
+    "note": "LT reste actif jusqu'à fermeture de l'app"
+  },
+  "docs": {
+    "roadmap": "docs/ROADMAP.md",
+    "stories": {
+      "01_architecture": "docs/story-01-architecture.md",
+      "02_backend": "docs/story-02-backend-tauri.md",
+      "03_dictionnaire": "docs/story-03-dictionnaire-personnalise.md",
+      "05_frontend": {
+        "05a_layout": "docs/story-05a-layout-design-system.md",
+        "05b_editeur": "docs/story-05b-editeur-principal.md",
+        "05c_corrections": "docs/story-05c-corrections-interactives.md",
+        "05d_etats": "docs/story-05d-etats-feedback.md"
+      },
+      "04_packaging": "docs/story-04-packaging.md"
+    },
+    "order": ["01", "02", "03", "05a", "05b", "05c", "05d", "04"]
+  },
+  "logs": {
+    "macos": "~/Library/Logs/com.azetextcorrector.app/",
+    "windows": "%LOCALAPPDATA%\\com.azetextcorrector.app\\logs\\",
+    "linux": "~/.local/share/com.azetextcorrector.app/logs/"
+  }
+}

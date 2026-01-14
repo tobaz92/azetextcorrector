@@ -1,0 +1,17 @@
+{
+  "name": "azetextcorrector",
+  "version": "1.0.0",
+  "description": "Application native macOS de correction orthographique et grammaticale française",
+  "scripts": {
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "build:assets": "./scripts/build-assets.sh",
+    "build:macos": "npm run build:assets && tauri build",
+    "clean:assets": "rm -rf resources/.tmp-build",
+    "clean:all": "rm -rf resources node_modules src-tauri/target"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.10.1"
+  }
+}

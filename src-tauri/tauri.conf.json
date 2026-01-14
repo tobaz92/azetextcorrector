@@ -1,0 +1,59 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "azeTextCorrector",
+  "version": "1.0.0",
+  "identifier": "com.azetextcorrector.desktop",
+  "build": {
+    "frontendDist": "../web"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "azeTextCorrector",
+        "width": 1000,
+        "height": 600,
+        "minWidth": 600,
+        "minHeight": 400,
+        "resizable": true,
+        "decorations": true,
+        "transparent": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://127.0.0.1:8081 http://127.0.0.1:8082 http://127.0.0.1:8083; object-src 'none'; base-uri 'self'"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["app", "dmg"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../resources/runtime": "runtime",
+      "../resources/languagetool": "languagetool"
+    },
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "dmg": {
+        "appPosition": { "x": 180, "y": 170 },
+        "applicationFolderPosition": { "x": 480, "y": 170 },
+        "windowSize": { "width": 660, "height": 400 }
+      },
+      "entitlements": null,
+      "exceptionDomain": null,
+      "signingIdentity": null
+    }
+  },
+  "plugins": {
+    "shell": {
+      "open": "^https://.*|^mailto:.*"
+    }
+  }
+}

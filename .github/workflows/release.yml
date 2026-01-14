@@ -1,0 +1,237 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  LT_VERSION: "6.6"
+  LT_SHA256: "53600506b399bb5ffe1e4c8dec794fd378212f14aaf38ccef9b6f89314d11631"
+  JAVA_MODULES: "java.base,java.logging,java.xml,java.naming,java.management,java.sql,java.desktop,java.instrument,jdk.httpserver"
+  MACOSX_DEPLOYMENT_TARGET: "11.0"
+
+jobs:
+  # ─── Validate versions match the tag ───
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Validate tag format and version consistency
+        run: |
+          set -e
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+
+          if [[ ! "$TAG_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Invalid tag format: $GITHUB_REF_NAME (expected vX.Y.Z)"
+            exit 1
+          fi
+
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          CARGO_VERSION=$(grep '^version' src-tauri/Cargo.toml | head -1 | cut -d'"' -f2)
+          TAURI_VERSION=$(python3 -c "import json; print(json.load(open('src-tauri/tauri.conf.json'))['version'])")
+
+          MISMATCH=0
+          for NAME_VER in "package.json:$PKG_VERSION" "Cargo.toml:$CARGO_VERSION" "tauri.conf.json:$TAURI_VERSION"; do
+            NAME="${NAME_VER%%:*}"
+            VER="${NAME_VER##*:}"
+            if [ "$VER" != "$TAG_VERSION" ]; then
+              echo "::error::Version mismatch: $NAME has $VER, tag is $TAG_VERSION"
+              MISMATCH=1
+            fi
+          done
+
+          [ "$MISMATCH" -eq 0 ] || exit 1
+          echo "All versions match: $TAG_VERSION"
+
+  # ─── Run tests ───
+  test:
+    needs: validate
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          shared-key: test
+
+      - name: Create resource stubs for build script
+        run: |
+          mkdir -p resources/runtime/bin
+          touch resources/runtime/bin/java
+          mkdir -p resources/languagetool
+          touch resources/languagetool/languagetool-server.jar
+
+      - name: Run Rust tests
+        working-directory: src-tauri
+        run: cargo test
+
+  # ─── Build per architecture ───
+  build:
+    needs: test
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            arch: aarch64
+            jdk_arch: aarch64
+          - target: x86_64-apple-darwin
+            arch: x86_64
+            jdk_arch: x64
+    runs-on: macos-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          shared-key: build-${{ matrix.arch }}
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Cache LanguageTool download
+        uses: actions/cache@v5
+        with:
+          path: .tmp-build/lt.zip
+          key: languagetool-${{ env.LT_VERSION }}
+
+      - name: Build assets (JRE + LanguageTool)
+        run: |
+          set -e
+          mkdir -p resources .tmp-build
+
+          # Download LanguageTool (cached)
+          if [ ! -f .tmp-build/lt.zip ]; then
+            echo "Downloading LanguageTool $LT_VERSION..."
+            curl -fL --retry 3 --proto '=https' \
+              -o .tmp-build/lt.zip \
+              "https://languagetool.org/download/LanguageTool-${LT_VERSION}.zip"
+          fi
+
+          # Verify checksum
+          echo "$LT_SHA256  .tmp-build/lt.zip" | shasum -a 256 -c
+
+          # Extract
+          unzip -q .tmp-build/lt.zip -d .tmp-build
+          mkdir -p resources/languagetool
+          cp .tmp-build/LanguageTool-$LT_VERSION/languagetool-server.jar resources/languagetool/
+          cp -r .tmp-build/LanguageTool-$LT_VERSION/libs resources/languagetool/
+          cp -r .tmp-build/LanguageTool-$LT_VERSION/org resources/languagetool/
+          cp -r .tmp-build/LanguageTool-$LT_VERSION/META-INF resources/languagetool/
+
+          # Download JDK for the target architecture and create JRE
+          JDK_URL="https://api.adoptium.net/v3/binary/latest/17/ga/mac/${{ matrix.jdk_arch }}/jdk/hotspot/normal/eclipse?project=jdk"
+          echo "Downloading JDK 17 for ${{ matrix.arch }}..."
+          curl -fL --retry 3 -o .tmp-build/jdk.tar.gz "$JDK_URL"
+          mkdir -p .tmp-build/jdk
+          tar -xzf .tmp-build/jdk.tar.gz -C .tmp-build/jdk --strip-components=1
+
+          JDK_HOME=$(find .tmp-build/jdk -name "jlink" -path "*/bin/*" | head -1 | xargs dirname | xargs dirname)
+
+          echo "Creating minimal JRE for ${{ matrix.arch }}..."
+          "$JDK_HOME/bin/jlink" \
+            --module-path "$JDK_HOME/jmods" \
+            --add-modules "$JAVA_MODULES" \
+            --output resources/runtime \
+            --strip-debug \
+            --compress=2 \
+            --no-header-files \
+            --no-man-pages
+
+          # Verify JRE arch
+          file resources/runtime/bin/java
+          rm -rf .tmp-build/LanguageTool-$LT_VERSION .tmp-build/jdk .tmp-build/jdk.tar.gz
+
+      - name: Build Tauri app
+        run: npx tauri build --target ${{ matrix.target }}
+
+      - name: Prepare artifact
+        run: |
+          set -e
+          VERSION="${GITHUB_REF_NAME#v}"
+
+          DMG=$(ls src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg 2>/dev/null | head -1)
+
+          if [ ! -f "$DMG" ]; then
+            echo "::error::DMG not found for ${{ matrix.target }}"
+            exit 1
+          fi
+
+          ARTIFACT="azeTextCorrector_${VERSION}_${{ matrix.arch }}.dmg"
+          cp "$DMG" "$ARTIFACT"
+
+          echo "Built: $ARTIFACT ($(du -sh "$ARTIFACT" | cut -f1))"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: dmg-${{ matrix.arch }}
+          path: azeTextCorrector_*.dmg
+          retention-days: 5
+
+  # ─── Collect and publish release ───
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v5
+        with:
+          pattern: dmg-*
+          merge-multiple: true
+
+      - name: Generate checksums
+        run: |
+          shasum -a 256 azeTextCorrector_*.dmg > SHA256SUMS.txt
+          echo "--- SHA256SUMS ---"
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          generate_release_notes: true
+          body: |
+            ## Installation
+
+            | Architecture | Fichier |
+            |---|---|
+            | Apple Silicon (M1/M2/M3/M4) | `azeTextCorrector_*_aarch64.dmg` |
+            | Intel | `azeTextCorrector_*_x86_64.dmg` |
+
+            > **macOS Gatekeeper** : L'app n'est pas signée par un certificat Apple Developer.
+            > Au premier lancement, faire **clic droit > Ouvrir** sur l'app, puis confirmer.
+            > Sinon en terminal : `xattr -cr /Applications/azeTextCorrector.app`
+          files: |
+            azeTextCorrector_*.dmg
+            SHA256SUMS.txt
+          fail_on_unmatched_files: true
