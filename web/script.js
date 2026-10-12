@@ -20,6 +20,7 @@ delete window.__TAURI__;
 
 const MAX_TOAST_DURATION = 4000;
 const CHAR_COUNT_THRESHOLD = 100000;
+const MAX_MENU_SUGGESTIONS = 3;
 
 // ============================================================================
 // DOM Elements
@@ -48,6 +49,8 @@ const elements = {
 
   // Context menu
   contextMenu: document.getElementById('context-menu'),
+  contextSuggestions: document.getElementById('context-suggestions'),
+  contextRevert: document.querySelector('#context-menu [data-action="revert"]'),
 
   // Dictionary panel
   toggleDictionary: document.getElementById('toggle-dictionary'),
@@ -83,7 +86,7 @@ const state = {
   isProcessing: false,
 
   /** @type {boolean} */
-  isFirstCorrection: true,
+  engineReady: false,
 
   /** @type {number|null} */
   selectedCorrectionIndex: null,
@@ -171,12 +174,13 @@ const StateManager = {
     elements.status.className = 'status';
   },
 
-  setDone(correctionCount) {
-    if (correctionCount === 0) {
-      elements.status.textContent = 'aucune erreur';
-    } else {
-      elements.status.textContent = `${correctionCount} correction${correctionCount > 1 ? 's' : ''}`;
-    }
+  setDone(corrections) {
+    const flagged = corrections.filter(c => c.flagged).length;
+    const applied = corrections.length - flagged;
+    const parts = [];
+    if (applied > 0) parts.push(`${applied} correction${applied > 1 ? 's' : ''}`);
+    if (flagged > 0) parts.push(`${flagged} à vérifier`);
+    elements.status.textContent = parts.length > 0 ? parts.join(', ') : 'aucune erreur';
     elements.status.className = 'status done';
   },
 };
@@ -236,14 +240,19 @@ const CorrectionRenderer = {
         correction.correctedOffset + correction.replacement.length
       );
 
+      const tip = correction.flagged ? 'Mot inconnu, laissé tel quel' : correction.original;
+      const label = correction.flagged
+        ? `Mot inconnu : ${correction.original}`
+        : `Correction : ${correction.original} remplacé par ${correctedWord}`;
+
       parts.push(
-        `<span class="correction" ` +
+        `<span class="correction${correction.flagged ? ' flagged' : ''}" ` +
         `data-index="${correction.index}" ` +
-        `data-original="${this.escapeAttr(correction.original)}" ` +
+        `data-tip="${this.escapeAttr(tip)}" ` +
         `data-message="${this.escapeAttr(correction.message)}" ` +
         `tabindex="0" ` +
         `role="button" ` +
-        `aria-label="${this.escapeAttr('Correction: ' + correction.original + ' remplacé par ' + correctedWord)}">` +
+        `aria-label="${this.escapeAttr(label)}">` +
         `${this.escapeHtml(correctedWord)}` +
         `</span>`
       );
@@ -342,6 +351,7 @@ const ContextMenu = {
     state.selectedCorrectionIndex = correctionIndex;
 
     const menu = elements.contextMenu;
+    this.renderSuggestions(state.corrections[correctionIndex]);
     menu.classList.remove('hidden');
 
     // Position the menu
@@ -374,6 +384,21 @@ const ContextMenu = {
     if (activeSpan) activeSpan.classList.add('active');
   },
 
+  /** Propositions de remplacement, uniquement pour un mot signalé. */
+  renderSuggestions(correction) {
+    const flagged = Boolean(correction?.flagged);
+    const suggestions = flagged ? correction.suggestions.slice(0, MAX_MENU_SUGGESTIONS) : [];
+
+    elements.contextSuggestions.innerHTML = suggestions.map((suggestion, i) => `
+      <button class="context-item context-suggestion" data-action="replace" data-replacement="${CorrectionRenderer.escapeAttr(suggestion)}" role="menuitem">
+        <span>${CorrectionRenderer.escapeHtml(suggestion)}</span>
+        <kbd>${i + 1}</kbd>
+      </button>
+    `).join('');
+    elements.contextSuggestions.classList.toggle('hidden', suggestions.length === 0);
+    elements.contextRevert.classList.toggle('hidden', flagged);
+  },
+
   hide() {
     elements.contextMenu.classList.add('hidden');
     this.currentIndex = null;
@@ -384,7 +409,7 @@ const ContextMenu = {
     spans.forEach(span => span.classList.remove('active'));
   },
 
-  async handleAction(action) {
+  async handleAction(action, replacement) {
     if (this.currentIndex === null) return;
 
     const correction = state.corrections[this.currentIndex];
@@ -395,7 +420,10 @@ const ContextMenu = {
         await this.ignoreWord(correction.original);
         break;
       case 'revert':
-        this.revertCorrection(this.currentIndex);
+        if (!correction.flagged) this.revertCorrection(this.currentIndex);
+        break;
+      case 'replace':
+        if (correction.flagged) this.replaceFlagged(this.currentIndex, replacement);
         break;
       case 'copy':
         await this.copyCorrection(correction);
@@ -420,35 +448,36 @@ const ContextMenu = {
     }
   },
 
-  revertCorrection(index) {
+  /** Remplace, dans le texte corrigé, le texte affiché d'une correction. */
+  rewriteCorrection(index, text) {
     const correction = state.corrections[index];
-    if (!correction) return;
+    const shift = state.corrections
+      .filter(c => c.offset < correction.offset)
+      .reduce((total, c) => total + c.replacement.length - c.length, 0);
+    const start = correction.offset + shift;
 
-    // Calculate position in corrected text
-    let offset = 0;
-    const sortedBefore = state.corrections
-      .filter((_, i) => i < index)
-      .sort((a, b) => a.offset - b.offset);
-
-    for (const c of sortedBefore) {
-      offset += c.replacement.length - c.length;
-    }
-
-    const correctedOffset = correction.offset + offset;
-
-    // Replace back to original
     state.correctedText =
-      state.correctedText.slice(0, correctedOffset) +
-      correction.original +
-      state.correctedText.slice(correctedOffset + correction.replacement.length);
+      state.correctedText.slice(0, start) +
+      text +
+      state.correctedText.slice(start + correction.replacement.length);
+    correction.replacement = text;
+  },
 
-    // Remove this correction from the list
+  revertCorrection(index) {
+    this.rewriteCorrection(index, state.corrections[index].original);
     state.corrections.splice(index, 1);
 
-    // Re-render
     CorrectionRenderer.render();
-    StateManager.setDone(state.corrections.length);
+    StateManager.setDone(state.corrections);
     ToastManager.info('Correction annulée');
+  },
+
+  replaceFlagged(index, replacement) {
+    this.rewriteCorrection(index, replacement);
+    state.corrections[index].flagged = false;
+
+    CorrectionRenderer.render();
+    StateManager.setDone(state.corrections);
   },
 
   async copyCorrection(correction) {
@@ -564,7 +593,7 @@ const DictionaryManager = {
 
 const Editor = {
   async correct() {
-    const text = elements.input.value.trim();
+    const text = elements.input.value.trim().normalize('NFC');
 
     if (!text) {
       state.originalText = '';
@@ -591,31 +620,19 @@ const Editor = {
     state.isProcessing = true;
     StateManager.clearError();
 
-    // Show appropriate loading message
-    const loadingMessage = state.isFirstCorrection
-      ? 'Démarrage de LanguageTool...'
-      : 'Correction...';
+    const loadingMessage = state.engineReady
+      ? 'Correction...'
+      : 'Chargement du moteur...';
     StateManager.setLoading(true, loadingMessage);
 
     try {
-      const result = await invoke('correct_text', { text });
+      const result = await Corrector.correct(text, state.dictionary);
 
-      state.isFirstCorrection = false;
-
-      // Parse the result
-      state.corrections = result.corrections.map(c => ({
-        offset: c.offset,
-        length: c.length,
-        original: c.original,
-        replacement: c.replacement,
-        message: c.message,
-        ruleId: c.rule_id,
-      }));
-
-      state.correctedText = result.corrected_text;
+      state.corrections = result.corrections;
+      state.correctedText = result.correctedText;
 
       StateManager.setLoading(false);
-      StateManager.setDone(state.corrections.length);
+      StateManager.setDone(state.corrections);
       CorrectionRenderer.render();
 
     } catch (error) {
@@ -714,11 +731,10 @@ function setupEventListeners() {
     }
   });
 
-  // Context menu actions
-  elements.contextMenu.querySelectorAll('.context-item').forEach(item => {
-    item.addEventListener('click', () => {
-      ContextMenu.handleAction(item.dataset.action);
-    });
+  // Context menu actions (suggestion buttons are rebuilt on each opening)
+  elements.contextMenu.addEventListener('click', (e) => {
+    const item = e.target.closest('.context-item');
+    if (item) ContextMenu.handleAction(item.dataset.action, item.dataset.replacement);
   });
 
   // Close context menu when clicking outside
@@ -771,13 +787,19 @@ function setupEventListeners() {
       } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         ContextMenu.handleAction('revert');
+      } else if (/^[1-9]$/.test(e.key)) {
+        const suggestion = elements.contextSuggestions.querySelectorAll('.context-suggestion')[Number(e.key) - 1];
+        if (suggestion) {
+          e.preventDefault();
+          suggestion.click();
+        }
       }
     }
   });
 
   // Context menu keyboard navigation
   elements.contextMenu.addEventListener('keydown', (e) => {
-    const items = [...elements.contextMenu.querySelectorAll('.context-item')];
+    const items = [...elements.contextMenu.querySelectorAll('.context-item:not(.hidden)')];
     const currentIndex = items.indexOf(document.activeElement);
 
     if (e.key === 'ArrowDown') {
@@ -800,7 +822,7 @@ function setupEventListeners() {
 // ============================================================================
 
 async function init() {
-  console.log('azeTextCorrector initializing...');
+  startEngine();
 
   // Setup event listeners
   setupEventListeners();
@@ -813,43 +835,19 @@ async function init() {
 
   // Focus input
   elements.input.focus();
-
-  console.log('azeTextCorrector ready');
-
-  // Preload LanguageTool in background for faster first correction
-  // Don't await - let it load while user types
-  preloadLanguageTool();
 }
 
-/**
- * Preload LanguageTool in background
- * This starts LT and warms up the French dictionaries
- * so the first correction is fast
- */
-async function preloadLanguageTool() {
+async function startEngine() {
+  elements.status.textContent = 'chargement...';
+  elements.status.className = 'status loading';
+
   try {
-    console.log('Preloading LanguageTool in background...');
-    StateManager.setStatus('Chargement...', 'loading');
-
-    const wasStarted = await invoke('preload_lt');
-
-    if (wasStarted) {
-      console.log('LanguageTool preloaded successfully');
-      StateManager.setStatus('Prêt', 'done');
-      // Reset to normal after 2s
-      setTimeout(() => {
-        if (elements.status.textContent === 'Prêt') {
-          StateManager.setStatus('prêt');
-        }
-      }, 2000);
-    } else {
-      console.log('LanguageTool was already running');
-      StateManager.setStatus('prêt');
-    }
+    await Corrector.start(words => invoke('spelling_suggestions', { words }));
+    state.engineReady = true;
+    StateManager.setReady();
   } catch (error) {
-    console.warn('Failed to preload LanguageTool:', error);
-    // Don't show error - it will be loaded on first correction
-    StateManager.setStatus('prêt');
+    console.error('Grammar engine failed to start:', error);
+    StateManager.setError(`Moteur de correction indisponible : ${error.message}`);
   }
 }
 

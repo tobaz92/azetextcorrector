@@ -54,35 +54,6 @@ else
     ERRORS=$((ERRORS + 1))
 fi
 
-# Check Java
-JAVA_OUTPUT=$(java -version 2>&1)
-if echo "$JAVA_OUTPUT" | grep -q "version"; then
-    JAVA_VERSION=$(echo "$JAVA_OUTPUT" | head -n 1 | cut -d'"' -f2)
-    JAVA_MAJOR=$(echo $JAVA_VERSION | cut -d'.' -f1)
-    if [ "$JAVA_MAJOR" -ge 17 ] 2>/dev/null; then
-        echo -e "${GREEN}[OK]${NC} Java: $JAVA_VERSION"
-    else
-        echo -e "${YELLOW}[WARN]${NC} Java $JAVA_VERSION found, but 17+ required"
-        ERRORS=$((ERRORS + 1))
-    fi
-else
-    echo -e "${RED}[MISSING]${NC} Java JDK 17+ not found"
-    echo -e "         Install: brew install temurin@17"
-    ERRORS=$((ERRORS + 1))
-fi
-
-# Check jlink
-if command -v jlink &> /dev/null; then
-    echo -e "${GREEN}[OK]${NC} jlink: available"
-else
-    if [ -n "$JAVA_HOME" ] && [ -f "$JAVA_HOME/bin/jlink" ]; then
-        echo -e "${GREEN}[OK]${NC} jlink: $JAVA_HOME/bin/jlink"
-    else
-        echo -e "${RED}[MISSING]${NC} jlink not found (part of JDK, not JRE)"
-        ERRORS=$((ERRORS + 1))
-    fi
-fi
-
 # Check Tauri CLI
 if npm list @tauri-apps/cli &> /dev/null; then
     TAURI_VERSION=$(npm list @tauri-apps/cli --json 2>/dev/null | grep -o '"version": "[^"]*"' | head -1 | cut -d'"' -f4)
