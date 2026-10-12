@@ -6,7 +6,7 @@ use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
 
 use serde::Serialize;
-use tauri::{Manager, State};
+use tauri::State;
 
 use crate::dictionary::Dictionary;
 use crate::error::AppError;
@@ -90,28 +90,4 @@ pub fn add_to_dictionary(word: String, state: State<'_, AppState>) -> Result<(),
 #[tauri::command]
 pub fn remove_from_dictionary(word: String, state: State<'_, AppState>) -> Result<(), AppError> {
     state.dictionary()?.remove_word_and_save(&word)
-}
-
-/// Get the log file path
-#[tauri::command]
-pub async fn get_log_path(app: tauri::AppHandle) -> Result<String, AppError> {
-    let log_dir = app
-        .path()
-        .app_log_dir()
-        .map_err(|e| AppError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, e)))?;
-
-    Ok(log_dir.to_string_lossy().to_string())
-}
-
-/// Export logs to a zip file
-#[tauri::command]
-pub async fn export_logs(app: tauri::AppHandle) -> Result<String, AppError> {
-    let log_dir = app
-        .path()
-        .app_log_dir()
-        .map_err(|e| AppError::Io(std::io::Error::new(std::io::ErrorKind::NotFound, e)))?;
-
-    // For now, just return the log directory path
-    // A more complete implementation would create a zip file
-    Ok(log_dir.to_string_lossy().to_string())
 }

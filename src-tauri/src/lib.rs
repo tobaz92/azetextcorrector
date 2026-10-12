@@ -40,8 +40,6 @@ pub fn run() {
             commands::get_dictionary,
             commands::add_to_dictionary,
             commands::remove_from_dictionary,
-            commands::get_log_path,
-            commands::export_logs,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
