@@ -10,7 +10,6 @@
     "dependencies": {
       "tauri": "2.9",
       "tauri-plugin-log": "2",
-      "tauri-plugin-shell": "2",
       "thiserror": "2.0",
       "objc2-app-kit": "0.3",
       "objc2-foundation": "0.3"

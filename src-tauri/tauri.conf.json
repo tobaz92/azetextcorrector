@@ -49,10 +49,5 @@
       "exceptionDomain": null,
       "signingIdentity": null
     }
-  },
-  "plugins": {
-    "shell": {
-      "open": "^https://.*|^mailto:.*"
-    }
   }
 }
