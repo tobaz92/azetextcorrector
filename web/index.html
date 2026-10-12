@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <header class="app-header">
-    <span class="app-title">azeTextCorrector</span>
+  <header class="app-header" data-tauri-drag-region>
+    <span class="app-title" data-tauri-drag-region>azeTextCorrector</span>
     <div class="header-actions">
       <button id="toggle-dictionary" class="icon-btn" title="Dictionnaire (⌘D)">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -89,7 +89,7 @@
     </div>
   </main>
 
-  <footer>
+  <footer data-tauri-drag-region>
     <div class="footer-left">
       <span class="status" id="status" role="status" aria-live="polite">prêt</span>
       <span class="char-count" id="char-count"></span>
