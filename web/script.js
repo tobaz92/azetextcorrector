@@ -700,6 +700,13 @@ function setupEventListeners() {
   window.addEventListener('resize', updateFullscreen);
   updateFullscreen();
 
+  // WebKit copies a selection as styled HTML (font, colors, highlights),
+  // which mail clients paste as is: keep plain text only.
+  elements.output.addEventListener('copy', (e) => {
+    e.preventDefault();
+    e.clipboardData.setData('text/plain', window.getSelection().toString());
+  });
+
   // Input events
   elements.input.addEventListener('input', () => {
     Editor.updateCharCount();
