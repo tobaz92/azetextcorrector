@@ -161,6 +161,13 @@
   </aside>
 
   <script src="corrector.js" defer></script>
-  <script src="script.js" defer></script>
+  <!-- Classic scripts sharing one global scope: order matters, main.js last -->
+  <script src="app/core.js" defer></script>
+  <script src="app/feedback.js" defer></script>
+  <script src="app/correction-renderer.js" defer></script>
+  <script src="app/context-menu.js" defer></script>
+  <script src="app/dictionary.js" defer></script>
+  <script src="app/editor.js" defer></script>
+  <script src="app/main.js" defer></script>
 </body>
 </html>
