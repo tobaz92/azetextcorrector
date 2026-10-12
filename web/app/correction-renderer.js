@@ -40,7 +40,7 @@ const CorrectionRenderer = {
     for (const correction of sortedCorrections) {
       // Add text before this correction
       if (correction.correctedOffset > lastIndex) {
-        parts.push(this.escapeHtml(text.slice(lastIndex, correction.correctedOffset)));
+        parts.push(escapeHtml(text.slice(lastIndex, correction.correctedOffset)));
       }
 
       // Add the correction highlight
@@ -57,12 +57,12 @@ const CorrectionRenderer = {
       parts.push(
         `<span class="correction${correction.flagged ? ' flagged' : ''}" ` +
         `data-index="${correction.index}" ` +
-        `data-tip="${this.escapeAttr(tip)}" ` +
-        `data-message="${this.escapeAttr(correction.message)}" ` +
+        `data-tip="${escapeAttr(tip)}" ` +
+        `data-message="${escapeAttr(correction.message)}" ` +
         `tabindex="0" ` +
         `role="button" ` +
-        `aria-label="${this.escapeAttr(label)}">` +
-        `${this.escapeHtml(correctedWord)}` +
+        `aria-label="${escapeAttr(label)}">` +
+        `${escapeHtml(correctedWord)}` +
         `</span>`
       );
 
@@ -71,7 +71,7 @@ const CorrectionRenderer = {
 
     // Add remaining text
     if (lastIndex < text.length) {
-      parts.push(this.escapeHtml(text.slice(lastIndex)));
+      parts.push(escapeHtml(text.slice(lastIndex)));
     }
 
     return parts.join('');
@@ -135,15 +135,5 @@ const CorrectionRenderer = {
         }
       });
     });
-  },
-
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  },
-
-  escapeAttr(text) {
-    return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   },
 };

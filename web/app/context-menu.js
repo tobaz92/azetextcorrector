@@ -3,7 +3,6 @@ const ContextMenu = {
 
   show(x, y, correctionIndex) {
     this.currentIndex = correctionIndex;
-    state.selectedCorrectionIndex = correctionIndex;
 
     const menu = elements.contextMenu;
     this.renderSuggestions(state.corrections[correctionIndex]);
@@ -45,8 +44,8 @@ const ContextMenu = {
     const suggestions = flagged ? correction.suggestions.slice(0, MAX_MENU_SUGGESTIONS) : [];
 
     elements.contextSuggestions.innerHTML = suggestions.map((suggestion, i) => `
-      <button class="context-item context-suggestion" data-action="replace" data-replacement="${CorrectionRenderer.escapeAttr(suggestion)}" role="menuitem">
-        <span>${CorrectionRenderer.escapeHtml(suggestion)}</span>
+      <button class="context-item context-suggestion" data-action="replace" data-replacement="${escapeAttr(suggestion)}" role="menuitem">
+        <span>${escapeHtml(suggestion)}</span>
         <kbd>${i + 1}</kbd>
       </button>
     `).join('');
@@ -57,7 +56,6 @@ const ContextMenu = {
   hide() {
     elements.contextMenu.classList.add('hidden');
     this.currentIndex = null;
-    state.selectedCorrectionIndex = null;
 
     // Remove highlight
     const spans = elements.output.querySelectorAll('.correction');

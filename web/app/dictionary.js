@@ -29,8 +29,8 @@ const DictionaryManager = {
 
     elements.wordList.innerHTML = words.map(word => `
       <li class="word-item">
-        <span class="word-text">${this.escapeHtml(word)}</span>
-        <button class="word-delete" data-word="${this.escapeAttr(word)}" title="Supprimer">
+        <span class="word-text">${escapeHtml(word)}</span>
+        <button class="word-delete" data-word="${escapeAttr(word)}" title="Supprimer">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <line x1="18" y1="6" x2="6" y2="18"></line>
             <line x1="6" y1="6" x2="18" y2="18"></line>
@@ -77,15 +77,5 @@ const DictionaryManager = {
       console.error('Failed to remove word:', error);
       ToastManager.error('Impossible de supprimer le mot');
     }
-  },
-
-  escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-  },
-
-  escapeAttr(text) {
-    return text.replace(/"/g, '&quot;').replace(/'/g, '&#39;');
   },
 };

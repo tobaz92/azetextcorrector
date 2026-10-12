@@ -39,8 +39,6 @@ const ToastManager = {
 
 const StateManager = {
   setLoading(loading, message = 'Correction...') {
-    state.isLoading = loading;
-
     if (loading) {
       elements.loadingOverlay.classList.remove('hidden');
       elements.loadingMessage.textContent = message;

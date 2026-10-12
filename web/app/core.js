@@ -53,17 +53,11 @@ const elements = {
 };
 
 const state = {
-  /** @type {string} */
-  originalText: '',
-
-  /** @type {Array<{offset: number, length: number, original: string, replacement: string, message: string, ruleId: string}>} */
+  /** @type {Array<{offset: number, length: number, original: string, replacement: string, suggestions: string[], flagged: boolean, message: string, ruleId: string}>} */
   corrections: [],
 
   /** @type {string} */
   correctedText: '',
-
-  /** @type {boolean} */
-  isLoading: false,
 
   /** @type {boolean} */
   isProcessing: false,
@@ -71,9 +65,21 @@ const state = {
   /** @type {boolean} */
   engineReady: false,
 
-  /** @type {number|null} */
-  selectedCorrectionIndex: null,
-
   /** @type {string[]} */
   dictionary: [],
 };
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/** For double-quoted attributes; & first, or "&quot;" in a word would decode. */
+function escapeAttr(text) {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/</g, '&lt;');
+}

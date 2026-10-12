@@ -3,11 +3,7 @@ const Editor = {
     const text = elements.input.value.trim().normalize('NFC');
 
     if (!text) {
-      state.originalText = '';
-      state.corrections = [];
-      state.correctedText = '';
-      CorrectionRenderer.render();
-      StateManager.setReady();
+      this.resetOutput();
       return;
     }
 
@@ -23,7 +19,6 @@ const Editor = {
       return;
     }
 
-    state.originalText = text;
     state.isProcessing = true;
     StateManager.clearError();
 
@@ -41,7 +36,6 @@ const Editor = {
       StateManager.setLoading(false);
       StateManager.setDone(state.corrections);
       CorrectionRenderer.render();
-
     } catch (error) {
       console.error('Correction failed:', error);
       StateManager.setLoading(false);
@@ -69,13 +63,16 @@ const Editor = {
 
   clear() {
     elements.input.value = '';
-    state.originalText = '';
+    this.resetOutput();
+    this.updateCharCount();
+    elements.input.focus();
+  },
+
+  resetOutput() {
     state.corrections = [];
     state.correctedText = '';
     CorrectionRenderer.render();
     StateManager.setReady();
-    this.updateCharCount();
-    elements.input.focus();
   },
 
   updateCharCount() {

@@ -1,4 +1,4 @@
-function setupEventListeners() {
+function setupWindowEvents() {
   // macOS hides the traffic lights in fullscreen: the header drops their inset.
   const updateFullscreen = () => {
     document.body.classList.toggle('fullscreen',
@@ -13,38 +13,19 @@ function setupEventListeners() {
     e.preventDefault();
     e.clipboardData.setData('text/plain', window.getSelection().toString());
   });
+}
 
-  // Input events
-  elements.input.addEventListener('input', () => {
-    Editor.updateCharCount();
-  });
+function setupEditorEvents() {
+  elements.input.addEventListener('input', () => Editor.updateCharCount());
+  elements.clearInput.addEventListener('click', () => Editor.clear());
+  elements.copyOutput.addEventListener('click', () => Editor.copyOutput());
+  elements.retryBtn.addEventListener('click', () => Editor.correct());
+}
 
-  elements.clearInput.addEventListener('click', () => {
-    Editor.clear();
-  });
-
-  // Output events
-  elements.copyOutput.addEventListener('click', () => {
-    Editor.copyOutput();
-  });
-
-  // Retry button
-  elements.retryBtn.addEventListener('click', () => {
-    Editor.correct();
-  });
-
-  // Dictionary panel
-  elements.toggleDictionary.addEventListener('click', () => {
-    DictionaryManager.toggle();
-  });
-
-  elements.closePanel.addEventListener('click', () => {
-    DictionaryManager.close();
-  });
-
-  elements.addWordBtn.addEventListener('click', () => {
-    DictionaryManager.addWord();
-  });
+function setupDictionaryEvents() {
+  elements.toggleDictionary.addEventListener('click', () => DictionaryManager.toggle());
+  elements.closePanel.addEventListener('click', () => DictionaryManager.close());
+  elements.addWordBtn.addEventListener('click', () => DictionaryManager.addWord());
 
   elements.newWord.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
@@ -52,86 +33,31 @@ function setupEventListeners() {
       DictionaryManager.addWord();
     }
   });
+}
 
-  // Context menu actions (suggestion buttons are rebuilt on each opening)
+function setupContextMenuEvents() {
+  // Delegated: suggestion buttons are rebuilt on each opening
   elements.contextMenu.addEventListener('click', (e) => {
     const item = e.target.closest('.context-item');
     if (item) ContextMenu.handleAction(item.dataset.action, item.dataset.replacement);
   });
 
-  // Close context menu when clicking outside
   document.addEventListener('click', (e) => {
-    if (!elements.contextMenu.contains(e.target) &&
-        !e.target.closest('.correction')) {
+    if (!elements.contextMenu.contains(e.target) && !e.target.closest('.correction')) {
       ContextMenu.hide();
     }
   });
 
-  // Keyboard shortcuts
-  document.addEventListener('keydown', (e) => {
-    // Escape: close menus
-    if (e.key === 'Escape') {
-      ContextMenu.hide();
-      DictionaryManager.close();
-      return;
-    }
-
-    // Cmd+Enter: correct
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      e.preventDefault();
-      Editor.correct();
-      return;
-    }
-
-    // Cmd+Shift+C: copy output
-    if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
-      // Only if not in a text field with selection
-      const active = document.activeElement;
-      if (active !== elements.input || !elements.input.selectionStart) {
-        e.preventDefault();
-        Editor.copyOutput();
-      }
-      return;
-    }
-
-    // Cmd+D: toggle dictionary
-    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'd') {
-      e.preventDefault();
-      DictionaryManager.toggle();
-      return;
-    }
-
-    // Context menu keyboard shortcuts when menu is open
-    if (!elements.contextMenu.classList.contains('hidden')) {
-      if (e.key === 'i' || e.key === 'I') {
-        e.preventDefault();
-        ContextMenu.handleAction('ignore');
-      } else if (e.key === 'r' || e.key === 'R') {
-        e.preventDefault();
-        ContextMenu.handleAction('revert');
-      } else if (/^[1-9]$/.test(e.key)) {
-        const suggestion = elements.contextSuggestions.querySelectorAll('.context-suggestion')[Number(e.key) - 1];
-        if (suggestion) {
-          e.preventDefault();
-          suggestion.click();
-        }
-      }
-    }
-  });
-
-  // Context menu keyboard navigation
   elements.contextMenu.addEventListener('keydown', (e) => {
     const items = [...elements.contextMenu.querySelectorAll('.context-item:not(.hidden)')];
     const currentIndex = items.indexOf(document.activeElement);
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      const next = items[(currentIndex + 1) % items.length];
-      next?.focus();
+      items[(currentIndex + 1) % items.length]?.focus();
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      const prev = items[(currentIndex - 1 + items.length) % items.length];
-      prev?.focus();
+      items[(currentIndex - 1 + items.length) % items.length]?.focus();
     } else if (e.key === 'Enter') {
       e.preventDefault();
       document.activeElement?.click();
@@ -139,19 +65,67 @@ function setupEventListeners() {
   });
 }
 
+/** @returns {boolean} true if the key was a global shortcut */
+function handleGlobalShortcut(e) {
+  const command = e.metaKey || e.ctrlKey;
+
+  if (e.key === 'Escape') {
+    ContextMenu.hide();
+    DictionaryManager.close();
+  } else if (command && e.key === 'Enter') {
+    e.preventDefault();
+    Editor.correct();
+  } else if (command && e.shiftKey && e.key.toLowerCase() === 'c') {
+    // Leave ⌘⇧C alone while text is selected in the input
+    if (document.activeElement !== elements.input || !elements.input.selectionStart) {
+      e.preventDefault();
+      Editor.copyOutput();
+    }
+  } else if (command && e.key.toLowerCase() === 'd') {
+    e.preventDefault();
+    DictionaryManager.toggle();
+  } else {
+    return false;
+  }
+  return true;
+}
+
+function handleContextMenuKey(e) {
+  const key = e.key.toLowerCase();
+
+  if (key === 'i') {
+    e.preventDefault();
+    ContextMenu.handleAction('ignore');
+  } else if (key === 'r') {
+    e.preventDefault();
+    ContextMenu.handleAction('revert');
+  } else if (/^[1-9]$/.test(key)) {
+    const suggestion = elements.contextSuggestions.querySelectorAll('.context-suggestion')[Number(key) - 1];
+    if (suggestion) {
+      e.preventDefault();
+      suggestion.click();
+    }
+  }
+}
+
+function setupShortcuts() {
+  document.addEventListener('keydown', (e) => {
+    if (handleGlobalShortcut(e)) return;
+    if (!elements.contextMenu.classList.contains('hidden')) handleContextMenuKey(e);
+  });
+}
+
 async function init() {
   startEngine();
 
-  // Setup event listeners
-  setupEventListeners();
+  setupWindowEvents();
+  setupEditorEvents();
+  setupDictionaryEvents();
+  setupContextMenuEvents();
+  setupShortcuts();
 
-  // Load dictionary
   await DictionaryManager.init();
-
-  // Update char count
   Editor.updateCharCount();
-
-  // Focus input
   elements.input.focus();
 }
 
@@ -169,5 +143,4 @@ async function startEngine() {
   }
 }
 
-// Start the app
 init().catch(console.error);
