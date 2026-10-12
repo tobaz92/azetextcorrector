@@ -113,8 +113,7 @@ impl Dictionary {
         // Check for duplicates (case-insensitive)
         if !self.contains(&word) {
             self.words.push(word);
-            self.words
-                .sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+            self.words.sort_by_cached_key(|word| word.to_lowercase());
         }
 
         Ok(())
@@ -166,8 +165,7 @@ impl Dictionary {
             // Rollback: add the word back
             if let Some(w) = original_word {
                 self.words.push(w);
-                self.words
-                    .sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+                self.words.sort_by_cached_key(|word| word.to_lowercase());
             }
             return Err(e);
         }
@@ -204,8 +202,7 @@ impl Dictionary {
         });
 
         // Sort
-        self.words
-            .sort_by(|a, b| a.to_lowercase().cmp(&b.to_lowercase()));
+        self.words.sort_by_cached_key(|word| word.to_lowercase());
     }
 
     /// Create a backup of a corrupted dictionary file
