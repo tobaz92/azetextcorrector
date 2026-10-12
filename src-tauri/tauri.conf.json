@@ -22,7 +22,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self' http://127.0.0.1:8081 http://127.0.0.1:8082 http://127.0.0.1:8083; object-src 'none'; base-uri 'self'"
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; connect-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'"
     }
   },
   "bundle": {
@@ -35,10 +35,6 @@
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": {
-      "../resources/runtime": "runtime",
-      "../resources/languagetool": "languagetool"
-    },
     "macOS": {
       "minimumSystemVersion": "11.0",
       "dmg": {

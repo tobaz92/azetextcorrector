@@ -23,11 +23,9 @@ serde_json = "1.0"
 # Logging
 log = "0.4"
 
-# Async runtime
-tokio = { version = "1", features = ["process", "time", "sync"] }
-
-# HTTP client for LanguageTool API
-reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+# Native macOS spell checker (versions aligned with Tauri's own objc2 stack)
+objc2-app-kit = { version = "0.3", default-features = false, features = ["std", "NSSpellChecker"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSString", "NSArray", "NSRange"] }
 
 # Error handling
 thiserror = "2.0"

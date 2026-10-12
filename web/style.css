@@ -309,7 +309,7 @@ main {
 
 /* Tooltip */
 .correction::before {
-  content: attr(data-original);
+  content: attr(data-tip);
   position: absolute;
   bottom: calc(100% + 6px);
   left: 50%;
@@ -346,6 +346,25 @@ main {
 .correction:hover::after {
   opacity: 1;
   visibility: visible;
+}
+
+/* Unknown word left as is, waiting for a decision */
+.correction.flagged {
+  background: var(--warning-bg);
+  color: inherit;
+  text-decoration: underline wavy var(--warning);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
+
+.correction.flagged:hover {
+  background: var(--warning);
+  color: var(--text-inverse);
+}
+
+.correction.flagged:focus {
+  outline-color: var(--warning);
+  background: var(--warning-bg);
 }
 
 /* Reverted correction */
@@ -684,6 +703,21 @@ footer {
   background: var(--bg-secondary);
   padding: 2px 4px;
   border-radius: var(--radius-sm);
+}
+
+.context-suggestions {
+  padding-bottom: var(--space-xs);
+  margin-bottom: var(--space-xs);
+  border-bottom: 1px solid var(--border-primary);
+}
+
+.context-suggestions.hidden,
+.context-item.hidden {
+  display: none;
+}
+
+.context-suggestion span {
+  font-weight: 600;
 }
 
 .context-divider {
