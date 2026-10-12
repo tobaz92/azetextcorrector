@@ -7,10 +7,8 @@ dist/
 .cache/
 .tmp-build/
 
-# LanguageTool assets (downloaded during build)
-# These are large files (~230MB) downloaded by scripts/build-assets.sh
-resources/runtime/
-resources/languagetool/
+# Grammalecte engine (downloaded by scripts/build-assets.sh)
+web/grammalecte/
 
 # Rust build artifacts
 src-tauri/target/

@@ -5,7 +5,7 @@
 # This script builds the production app bundle for macOS.
 #
 # Requirements:
-#   - Resources already built (run build-assets.sh first)
+#   - Grammalecte downloaded (run build-assets.sh first)
 #   - Rust toolchain installed
 #   - Node.js 18+ installed
 #
@@ -67,7 +67,7 @@ done
 # Directories
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-RESOURCES_DIR="$PROJECT_ROOT/resources"
+ENGINE_DIR="$PROJECT_ROOT/web/grammalecte"
 TAURI_DIR="$PROJECT_ROOT/src-tauri"
 
 echo ""
@@ -84,12 +84,12 @@ echo ""
 
 log_info "Checking requirements..."
 
-# Check resources exist
-if [ ! -d "$RESOURCES_DIR/runtime" ]; then
-    log_error "Resources not found. Run ./scripts/build-assets.sh first."
+# Check the grammar engine is present (embedded in the binary with web/)
+if [ ! -f "$ENGINE_DIR/VERSION" ]; then
+    log_error "Grammalecte not found. Run ./scripts/build-assets.sh first."
     exit 1
 fi
-log_success "Resources found"
+log_success "Grammalecte $(cat "$ENGINE_DIR/VERSION") found"
 
 # Check Rust toolchain
 if ! command -v cargo &> /dev/null; then
@@ -160,21 +160,8 @@ if [ ! -d "$APP_PATH" ]; then
 fi
 log_success "App bundle created"
 
-# Check that resources are bundled
-if [ ! -d "$APP_PATH/Contents/Resources/runtime" ]; then
-    log_error "Runtime not bundled in app"
-    exit 1
-fi
-if [ ! -d "$APP_PATH/Contents/Resources/languagetool" ]; then
-    log_error "LanguageTool not bundled in app"
-    exit 1
-fi
-log_success "Resources bundled correctly"
-
 # Calculate sizes
 APP_SIZE=$(du -sh "$APP_PATH" | cut -f1)
-RUNTIME_SIZE=$(du -sh "$APP_PATH/Contents/Resources/runtime" | cut -f1)
-LT_SIZE=$(du -sh "$APP_PATH/Contents/Resources/languagetool" | cut -f1)
 
 echo ""
 echo "=============================================="
@@ -182,8 +169,6 @@ echo "  Build Complete!"
 echo "=============================================="
 echo ""
 echo "  App Bundle:     $APP_SIZE"
-echo "  ├── Runtime:    $RUNTIME_SIZE"
-echo "  └── LangTool:   $LT_SIZE"
 echo ""
 
 if [ -f "$DMG_PATH" ]; then
@@ -202,8 +187,8 @@ echo ""
 
 # Size warnings
 APP_SIZE_MB=$(du -sm "$APP_PATH" | cut -f1)
-if [ "$APP_SIZE_MB" -gt 300 ]; then
-    log_warn "App size ($APP_SIZE_MB MB) is larger than expected (target: <260 MB)"
+if [ "$APP_SIZE_MB" -gt 30 ]; then
+    log_warn "App size ($APP_SIZE_MB MB) is larger than expected (target: <30 MB)"
 fi
 
 log_success "Production build ready!"

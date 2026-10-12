@@ -6,10 +6,11 @@
     "tauri": "tauri",
     "dev": "tauri dev",
     "build": "tauri build",
+    "test": "node --test tests/*.test.mjs",
     "build:assets": "./scripts/build-assets.sh",
     "build:macos": "npm run build:assets && tauri build",
-    "clean:assets": "rm -rf resources/.tmp-build",
-    "clean:all": "rm -rf resources node_modules src-tauri/target"
+    "clean:assets": "rm -rf .tmp-build web/grammalecte",
+    "clean:all": "rm -rf .tmp-build web/grammalecte node_modules src-tauri/target"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2.10.1"
