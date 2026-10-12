@@ -10,7 +10,6 @@
     "dependencies": {
       "tauri": "2.9",
       "tauri-plugin-log": "2",
-      "tauri-plugin-shell": "2",
       "thiserror": "2.0",
       "objc2-app-kit": "0.3",
       "objc2-foundation": "0.3"
@@ -31,7 +30,7 @@
   "architecture": {
     "web/index.html": "Interface utilisateur",
     "web/style.css": "Design system dark mode",
-    "web/script.js": "Classe Editor principale",
+    "web/app/": "Interface : état partagé, rendu, menu, dictionnaire, éditeur, raccourcis (main.js)",
     "src-tauri/": "App native Tauri (Rust)",
     "src-tauri/src/lib.rs": "Point d'entrée, setup logging",
     "src-tauri/src/error.rs": "Types d'erreur AppError",
