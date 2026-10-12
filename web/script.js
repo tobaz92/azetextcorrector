@@ -692,6 +692,14 @@ const Editor = {
 // ============================================================================
 
 function setupEventListeners() {
+  // macOS hides the traffic lights in fullscreen: the header drops their inset.
+  const updateFullscreen = () => {
+    document.body.classList.toggle('fullscreen',
+      window.innerWidth === screen.width && window.innerHeight === screen.height);
+  };
+  window.addEventListener('resize', updateFullscreen);
+  updateFullscreen();
+
   // Input events
   elements.input.addEventListener('input', () => {
     Editor.updateCharCount();

@@ -68,6 +68,7 @@
   --space-sm: 8px;
   --space-md: 12px;
   --space-lg: 16px;
+  --traffic-lights-inset: 84px;
   --space-xl: 20px;
   --space-2xl: 24px;
 
@@ -123,15 +124,21 @@ body {
 }
 
 /* ===== HEADER ===== */
+/* Also the window title bar: macOS draws its traffic lights over its left
+   side (trafficLightPosition in tauri.conf.json, centered in 40px). */
 .app-header {
   height: 40px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 var(--space-lg);
+  padding: 0 var(--space-lg) 0 var(--traffic-lights-inset);
   background: var(--bg-secondary);
   border-bottom: 1px solid var(--border-primary);
-  -webkit-app-region: drag;
+}
+
+/* No traffic lights in fullscreen */
+.fullscreen .app-header {
+  padding-left: var(--space-lg);
 }
 
 .app-title {
@@ -144,7 +151,6 @@ body {
 .header-actions {
   display: flex;
   gap: var(--space-sm);
-  -webkit-app-region: no-drag;
 }
 
 /* ===== MAIN ===== */
