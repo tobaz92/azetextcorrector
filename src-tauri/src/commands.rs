@@ -31,9 +31,9 @@ impl AppState {
     }
 
     fn dictionary(&self) -> Result<MutexGuard<'_, Dictionary>, AppError> {
-        self.dictionary
-            .lock()
-            .map_err(|_| AppError::Dictionary("Dictionnaire verrouillé après une erreur interne".into()))
+        self.dictionary.lock().map_err(|_| {
+            AppError::Dictionary("Dictionnaire verrouillé après une erreur interne".into())
+        })
     }
 }
 

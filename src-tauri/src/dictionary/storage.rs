@@ -231,7 +231,6 @@ impl Dictionary {
 mod tests {
     use super::*;
 
-
     #[test]
     fn test_add_word() {
         let mut dict = Dictionary::new(PathBuf::from("/tmp/test.json"));
